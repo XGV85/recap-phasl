@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es-MX"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>Recapitulemos la sesión 1</title>
+<link rel="stylesheet" href="estilo.css"></head>
+<body><main class="part">
+<header><p class="sobre">Prevención del Hostigamiento y Acoso Sexual y Laboral · Sesión 2</p>
+<h1>Recapitulemos la sesión 1</h1>
+<p class="nota">Cinco preguntas. Sus respuestas son anónimas y no cuentan para la calificación. Al terminar, veremos en pantalla los resultados de todo el grupo.</p></header>
+<div id="preguntas"></div>
+<button class="btn" id="enviar" disabled>Enviar mis respuestas</button>
+<p class="falta" id="falta"></p><p class="error oculto" id="error">No se pudo enviar. Revise su conexión e intente de nuevo; si no funciona, escriba sus respuestas en el chat de Zoom.</p>
+<section class="listo oculto" id="listo"><h2>¡Gracias!</h2><p>Sus respuestas ya se enviaron. Regrese a la sesión de Zoom para ver los resultados del grupo.</p></section>
+</main>
+<script src="datos.js"></script>
+<script>
+const clave="phasl-s2-recap-"+CANAL;
+let uid=localStorage.getItem(clave+"-uid");
+if(!uid){uid=Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);localStorage.setItem(clave+"-uid",uid);}
+const r=Array(PREGUNTAS.length).fill(null);
+const cont=document.getElementById("preguntas"),btn=document.getElementById("enviar"),falta=document.getElementById("falta");
+cont.innerHTML=PREGUNTAS.map((p,i)=>`<section class="preg"><h2><b>${i+1}.</b> ${esc(p.t)}</h2>${p.o.map((o,j)=>`<button type="button" class="opc" data-p="${i}" data-o="${j}" aria-pressed="false"><b>${LETRAS[j]}.</b>${esc(o)}</button>`).join("")}</section>`).join("");
+function act(){const n=r.filter(x=>x===null).length;btn.disabled=n>0;falta.textContent=n?`Le falta${n>1?"n":""} ${n} pregunta${n>1?"s":""} por responder.`:"";}
+cont.addEventListener("click",e=>{const b=e.target.closest(".opc");if(!b)return;const p=+b.dataset.p;r[p]=+b.dataset.o;
+ cont.querySelectorAll(`.opc[data-p="${p}"]`).forEach(x=>x.setAttribute("aria-pressed",x===b));act();});
+act();
+function fin(){cont.classList.add("oculto");btn.classList.add("oculto");falta.classList.add("oculto");document.getElementById("error").classList.add("oculto");document.getElementById("listo").classList.remove("oculto");scrollTo(0,0);}
+// Una respuesta por dispositivo durante la jornada; pasadas 10 horas puede volver a responder.
+const prev=+localStorage.getItem(clave+"-env")||0;if(Date.now()-prev<36e6)fin();
+btn.onclick=async()=>{btn.disabled=true;btn.textContent="Enviando…";document.getElementById("error").classList.add("oculto");
+ for(let k=0;k<4;k++){try{const x=await fetch("https://ntfy.sh/"+CANAL,{method:"POST",body:JSON.stringify({u:uid,r})});
+   if(x.ok){localStorage.setItem(clave+"-env",String(Date.now()));fin();return;}}catch(e){}
+   await new Promise(ok=>setTimeout(ok,1500*(k+1)));}
+ btn.disabled=false;btn.textContent="Enviar mis respuestas";document.getElementById("error").classList.remove("oculto");};
+</script></body></html>

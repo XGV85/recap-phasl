@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es-MX"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>Resultados · Recapitulemos la sesión 1</title>
+<link rel="stylesheet" href="../estilo.css"></head>
+<body class="proy">
+<div class="top"><h1>Recapitulemos la sesión 1 · Resultados del grupo</h1><div class="cuenta"><b id="total">0</b>personas respondieron</div></div>
+<div class="cuerpo" id="cuerpo"></div>
+<div class="pie"><span><span class="punto" id="punto"></span><span id="estado">Conectando…</span></span>
+<span class="esp"></span>
+<button class="ctrl" id="ant">◀ Anterior</button><button class="ctrl" id="sig">Siguiente ▶</button>
+<button class="ctrl prim" id="ver">Mostrar respuesta correcta</button>
+<button class="ctrl" id="todas">Ver las cinco</button><button class="ctrl" id="pc">Pantalla completa</button><button class="ctrl" id="rei">Reiniciar</button></div>
+<script src="../datos.js"></script>
+<script>
+const CLAVE=[
+ {k:1,w:"Hay subordinación jerárquica real, y ese es el criterio que distingue el hostigamiento del acoso.",f:"Sesión 1, «La subordinación es el criterio que los distingue». Ley Federal del Trabajo, artículo 3 Bis"},
+ {k:0,w:"La ley no exige que la conducta se repita, y si la relación es de trabajo, lo que ocurre en el entorno digital también es laboral.",f:"Sesión 1, «La subordinación es el criterio que los distingue» y «Conductas físicas y en entornos digitales»"},
+ {k:2,w:"La buena intención no es un criterio jurídico. La misma frase puede ser inocua entre pares y coercitiva dicha por quien evalúa el desempeño.",f:"Sesión 1, «No era mi intención»"},
+ {k:0,w:"Donde hay jerarquía, la libertad para negarse está condicionada. La pregunta es si esa persona estaba en condiciones de decir que no.",f:"Sesión 1, «Consentimiento en el contexto laboral»"},
+ {k:1,w:"Cuando se duda de quien habla, el resto del personal aprende que no vale la pena hablar. El silencio con frecuencia indica lo contrario.",f:"Sesión 1, «Revictimización y silencio organizacional». ACUERDO INE/CG625/2021, apartado 3.2.2"}
+];
+const $=id=>document.getElementById(id);
+const resp=new Map();let i=0,verOk=false,vista="una";
+const cDesde="phasl-res-desde-"+CANAL;
+function cuenta(q){const c=PREGUNTAS[q].o.map(()=>0);let t=0;resp.forEach(r=>{if(Number.isInteger(r[q])&&r[q]>=0&&r[q]<c.length){c[r[q]]++;t++;}});return{c,t};}
+function barras(q,conOk){const{c,t}=cuenta(q);return PREGUNTAS[q].o.map((o,j)=>{const p=t?Math.round(100*c[j]/t):0;const ok=conOk&&j===CLAVE[q].k;
+ return `<div class="barra${ok?" ok":""}"><div class="et"><span>${LETRAS[j]}. ${esc(o)}</span><b>${c[j]} · ${p}%</b></div><div class="pista"><div class="rell" style="width:${p}%"></div></div></div>`;}).join("");}
+function pinta(){
+ $("total").textContent=resp.size;
+ if(vista==="todas"){$("cuerpo").innerHTML=`<div class="todas">${PREGUNTAS.map((p,q)=>`<div class="mini" data-q="${q}"><h3>${q+1}. ${esc(p.t)}</h3>${barras(q,verOk)}</div>`).join("")}</div>`;}
+ else{const p=PREGUNTAS[i];$("cuerpo").innerHTML=`<div class="q"><p class="n">Pregunta ${i+1} de ${PREGUNTAS.length}</p><h2>${esc(p.t)}</h2>${barras(i,verOk)}${verOk?`<p class="porque"><b>Por qué: </b>${esc(CLAVE[i].w)}<small>${esc(CLAVE[i].f)}</small></p>`:""}</div>`;}
+ $("ant").disabled=vista==="todas"||i===0;$("sig").disabled=vista==="todas"||i===PREGUNTAS.length-1;
+ $("ver").textContent=verOk?"Ocultar respuesta correcta":"Mostrar respuesta correcta";$("todas").textContent=vista==="todas"?"Ver una por una":"Ver las cinco";}
+function mover(d){const n=i+d;if(n<0||n>=PREGUNTAS.length)return;i=n;verOk=false;pinta();}
+$("ant").onclick=()=>mover(-1);$("sig").onclick=()=>mover(1);
+$("ver").onclick=()=>{verOk=!verOk;pinta();};
+$("todas").onclick=()=>{vista=vista==="todas"?"una":"todas";pinta();};
+$("cuerpo").addEventListener("click",e=>{const m=e.target.closest(".mini");if(m){i=+m.dataset.q;vista="una";pinta();}});
+const pc=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();$("pc").onclick=pc;
+document.addEventListener("keydown",e=>{if(e.key==="ArrowRight")mover(1);if(e.key==="ArrowLeft")mover(-1);if(e.key===" "){e.preventDefault();verOk=!verOk;pinta();}if(e.key==="f"||e.key==="F")pc();});
+$("rei").onclick=()=>{if(confirm("¿Borrar de esta pantalla las respuestas recibidas y empezar de cero?")){localStorage.setItem(cDesde,String(Math.floor(Date.now()/1000)));location.reload();}};
+const vistos=new Set();
+const es=new EventSource("https://ntfy.sh/"+CANAL+"/sse?since="+(localStorage.getItem(cDesde)||"all"));
+es.onopen=()=>{$("punto").classList.add("on");$("estado").textContent="En vivo";};
+es.onerror=()=>{$("punto").classList.remove("on");$("estado").textContent="Reconectando…";};
+es.onmessage=ev=>{let m,d;try{m=JSON.parse(ev.data);if(m.event!=="message"||vistos.has(m.id))return;vistos.add(m.id);d=JSON.parse(m.message);}catch(e){return;}
+ if(d&&d.u&&Array.isArray(d.r)){resp.set(String(d.u),d.r);pinta();}};
+pinta();
+</script></body></html>
