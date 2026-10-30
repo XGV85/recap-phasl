@@ -40,10 +40,14 @@ const pc=()=>document.fullscreenElement?document.exitFullscreen():document.docum
 document.addEventListener("keydown",e=>{if(e.key==="ArrowRight")mover(1);if(e.key==="ArrowLeft")mover(-1);if(e.key===" "){e.preventDefault();verOk=!verOk;pinta();}if(e.key==="f"||e.key==="F")pc();});
 $("rei").onclick=()=>{if(confirm("¿Borrar de esta pantalla las respuestas recibidas y empezar de cero?")){localStorage.setItem(cDesde,String(Math.floor(Date.now()/1000)));location.reload();}};
 const vistos=new Set();
-const es=new EventSource("https://ntfy.sh/"+CANAL+"/sse?since="+(localStorage.getItem(cDesde)||"all"));
-es.onopen=()=>{$("punto").classList.add("on");$("estado").textContent="En vivo";};
-es.onerror=()=>{$("punto").classList.remove("on");$("estado").textContent="Reconectando…";};
-es.onmessage=ev=>{let m,d;try{m=JSON.parse(ev.data);if(m.event!=="message"||vistos.has(m.id))return;vistos.add(m.id);d=JSON.parse(m.message);}catch(e){return;}
- if(d&&d.u&&Array.isArray(d.r)){resp.set(String(d.u),d.r);pinta();}};
-pinta();
+const desde=localStorage.getItem(cDesde)||"all";
+function recibe(m){let d;try{if(m.event!=="message"||vistos.has(m.id))return false;vistos.add(m.id);d=JSON.parse(m.message);}catch(e){return false;}
+ if(d&&d.u&&Array.isArray(d.r)){resp.set(String(d.u),d.r);return true;}return false;}
+function enVivo(on){$("punto").classList.toggle("on",on);$("estado").textContent=on?"En vivo":"Reconectando…";}
+// La consulta periódica trae lo ya respondido; el canal en vivo solo acelera lo que llega después.
+async function consulta(){try{const x=await fetch("https://ntfy.sh/"+CANAL+"/json?poll=1&since="+desde);if(!x.ok)throw 0;
+  let cambio=false;(await x.text()).split("\n").filter(Boolean).forEach(l=>{if(recibe(JSON.parse(l)))cambio=true;});enVivo(true);if(cambio)pinta();}catch(e){enVivo(false);}}
+const es=new EventSource("https://ntfy.sh/"+CANAL+"/sse?since="+Math.floor(Date.now()/1000));
+es.onmessage=ev=>{try{if(recibe(JSON.parse(ev.data)))pinta();}catch(e){}};
+pinta();consulta();setInterval(consulta,6000);
 </script></body></html>
